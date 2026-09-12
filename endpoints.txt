@@ -1,0 +1,39 @@
+# healthcheck
+GET /health
+
+# auth
+POST /auth/signup
+POST /auth/login
+
+# users
+GET /users/me
+GET /users/me/settings
+PATCH /users/me/settings
+
+# books
+GET /books
+POST /books # multipart upload + metadata
+GET /books/:book-id
+PATCH /books/:book-id # metadata
+DELETE /books/:book-id
+
+GET /books/:id/content # get PDF itself
+
+# progress
+GET /books/:id/progress
+PUT /books/:id/progress
+
+# bookmarks
+GET /books/:id/bookmarks
+POST /books/:id/bookmarks
+
+GET /books/:id/bookmarks/:id
+PATCH /books/:id/bookmarks/:id
+DELETE /books/:id/bookmarks/:id
+
+# sharing
+GET /books/:id/share # get sharing link if exists
+POST /books/:id/share # create sharing link
+DELETE /books/:id/share
+GET /share/:token
+POST /share/:token/accept
