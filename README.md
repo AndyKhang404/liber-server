@@ -1,114 +1,260 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# pdf-server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A backend API for a personal PDF library.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+`pdf-server` is being built as a small, self-hosted backend for storing PDF documents, tracking reading progress, adding page bookmarks, and sharing documents with other users.
 
-## Description
+> **Status:** Work in progress. The PostgreSQL schema has been initialized, and the application/data-access layer is currently being built with Drizzle ORM.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Features
+
+The initial scope of the project includes:
+
+* User accounts and authentication
+* PDF file uploads and storage
+* Document metadata management
+* Reading progress tracking
+* Page bookmarks with descriptions
+* Sharing documents with other users
+* Reusing stored files when a document is shared
+* Ownership and authorization at the service layer
+
+The project intentionally keeps its initial scope small. Public book discovery, custom roles and permissions, and a plugin/pipeline system are potential future directions rather than current requirements.
+
+## Tech stack
+
+* **NestJS** — HTTP API and application framework
+* **TypeScript** — application language
+* **PostgreSQL** — relational database
+* **Drizzle ORM** — database access and migrations
+* **Argon2** — password hashing
+
+## Architecture
+
+The application separates a stored file from the user's document/library entry.
+
+### Data model
+
+```text
+User
+ │
+ ├──< Document >── File
+ │       │
+ │       └──< Bookmark
+ │
+ └──< ShareHistory >── Share >── Document
+```
+
+### User
+
+Stores account and authentication information.
+
+Relevant fields include:
+
+* `userId`
+* `username`
+* `email`
+* `passwordHash`
+* `verifiedAt`
+* `createdAt`
+* `lastLoginAt`
+
+Passwords are stored as Argon2 hashes rather than plaintext.
+
+### File
+
+Represents the underlying stored file.
+
+A `File` contains storage-related information such as:
+
+* `fileId`
+* `storageKey`
+* `mimeType`
+* `sizeBytes`
+* `lastReferencedAt`
+
+Files are kept separate from documents so that multiple document records can reference the same underlying file.
+
+When a document's content is replaced, a new `File` is created rather than mutating the existing one. Files that are no longer referenced can later be cleaned up by a scheduled job.
+
+### Document
+
+Represents a user's library entry and its metadata.
+
+A document contains:
+
+* `docId`
+* `userId`
+* `fileId`
+* `title`
+* `author`
+* `publisher`
+* `description`
+* `publishedAt`
+* `createdAt`
+* `readingProgress`
+
+Reading progress belongs to the document owned by a particular user, rather than to the underlying file.
+
+### Bookmark
+
+Stores a page bookmark belonging to a document.
+
+Each bookmark contains:
+
+* `bookmarkId`
+* `docId`
+* `page`
+* `content`
+
+### Share
+
+Represents an invitation to share a document.
+
+A share contains:
+
+* `shareId`
+* `docId`
+* `shareExpiredAt`
+* `shareCount`
+
+The owner does not need to be stored in `Share`, since ownership can be determined through the associated `Document`.
+
+### ShareHistory
+
+Tracks individual users claiming a share.
+
+It contains:
+
+* `userId`
+* `shareId`
+* `claimedAt`
+* `claimedDocId`
+
+Claiming a share creates a new `Document` for the recipient. The new document can reuse the original immutable `File`, while maintaining its own reading progress and bookmarks.
+
+## API design
+
+The API is organized around resources rather than database tables.
+
+The intended API surface covers:
+
+* Health checks
+* Authentication and the current user
+* Document creation, listing, retrieval, and deletion
+* PDF content access
+* Reading progress
+* Bookmarks
+* Document sharing and share claiming
+
+Authenticated requests identify the current user through the authentication layer rather than accepting an arbitrary user ID in the URL.
+
+Business rules such as document ownership and authorization are handled by application services rather than being left to controllers.
+
+## Database
+
+The project uses PostgreSQL with Drizzle ORM.
+
+The database connection is configured through:
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/pdf_server
+```
+
+### Generate a migration
+
+After changing the Drizzle schema:
+
+```bash
+npx drizzle-kit generate --name=change_description
+```
+
+### Apply migrations
+
+```bash
+npx drizzle-kit migrate
+```
+
+For a new development database, configure `DATABASE_URL` and apply the generated migrations before starting the application.
 
 ## Project setup
 
+Install dependencies:
+
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+Configure the required environment variables, including `DATABASE_URL`, then initialize the database using the Drizzle migration workflow above.
+
+## Running the application
 
 ```bash
 # development
-$ npm run start
+npm run start
 
 # watch mode
-$ npm run start:dev
+npm run start:dev
 
-# production mode
-$ npm run start:prod
+# production
+npm run start:prod
 ```
 
-## Run tests
+## Testing
+
+### Unit tests
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run test
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### End-to-end tests
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run test:e2e
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Test coverage
 
-## Observability
+```bash
+npm run test:cov
+```
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+## Development principles
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+A few design principles guide the project:
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+* **Keep the initial scope small.** New abstractions should solve an actual current requirement.
+* **Separate domain concepts from storage.** A `Document` represents a user's library entry; a `File` represents stored content.
+* **Use the database for invariants.** PostgreSQL constraints should enforce relationships and data integrity where appropriate.
+* **Keep business logic out of controllers.** Controllers handle HTTP concerns while services handle application logic and authorization.
+* **Use transactions for multi-step operations.** Operations such as claiming a share should be atomic.
+* **Avoid premature generalization.** A future catalog, permission system, additional media types, or plugin architecture can be introduced when there is a concrete requirement for it.
 
-## Resources
+## Roadmap
 
-Check out a few resources that may come in handy when working with NestJS:
+The project is intentionally being developed incrementally.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Current
 
-## Support
+* [x] PostgreSQL schema
+* [x] Initial Drizzle ORM setup
+* [ ] Database CRUD layer
+* [ ] Authentication
+* [ ] Document/file API
+* [ ] Reading progress API
+* [ ] Bookmark API
+* [ ] Sharing API
+* [ ] Automated tests
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Future possibilities
 
-## Stay in touch
+These are deliberately outside the current scope:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+* Public document/book discovery
+* More expressive permission and role systems
+* Support for manga, comics, visual novels, and other media
+* Plugin systems, pipelines, and application hooks
+* Production deployment and operational tooling
 
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+The goal is to get the core personal PDF library working well before expanding the architecture.
