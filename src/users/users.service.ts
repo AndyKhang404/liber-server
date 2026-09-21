@@ -1,10 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { users } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+import { DbService } from '../db/db.service.js';
 
 // TODO
 export type UserInfo = {
   username: string;
   email: string;
-  digest: string;
+  passwordHash: string;
 };
 
 export type User = UserInfo & {
@@ -13,22 +16,45 @@ export type User = UserInfo & {
 
 @Injectable()
 export class UsersService {
-  private readonly users: User[] = [
-    {
-      userId: '1',
-      username: 'khang',
-      email: 'andykhang404@gmail.com',
-      digest:
-        '$argon2id$v=19$m=65536,p=4,t=3$t461LocQt9e+/WX0f9yORQ$gT9UA3uep5ftYslADyEpid4LmXXYAqWpNR5IeVo/iq8',
-    },
-  ];
+  private readonly debugUser: User = {
+    userId: '1',
+    username: 'khang',
+    email: 'andykhang404@gmail.com',
+    passwordHash:
+      '$argon2id$v=19$m=65536,t=3,p=4$aTVQODEwYlpyM1N3RXBWWQ$4ENpsUADSByQ55Hg5KXW7g',
+  };
+
+  constructor(private readonly database: DbService) {}
 
   async findOne(username: string): Promise<User | undefined> {
-    return this.users.find((user) => user.username === username);
+    if (username == 'khang') return this.debugUser;
+    const [user] = await this.database.db
+      .select({
+        username: users.username,
+        email: users.email,
+        passwordHash: users.password_hash,
+        userId: users.user_id,
+      })
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+
+    return user;
   }
 
-  async addOne(user: UserInfo): Promise<boolean> {
-    this.users.push({ userId: (this.users.length + 1).toString(), ...user });
-    return true;
+  async addOne(userInfo: UserInfo) {
+    const [user] = await this.database.db
+      .insert(users)
+      .values({
+        username: userInfo.username,
+        email: userInfo.email,
+        password_hash: userInfo.passwordHash,
+      })
+      .returning({
+        userId: users.user_id,
+        username: users.username,
+        email: users.email,
+      });
+    return user;
   }
 }

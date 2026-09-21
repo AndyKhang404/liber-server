@@ -62,7 +62,10 @@ export class AuthService {
 
   async signIn(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findOne(username);
-    if (!user || !(await this.passwordService.verify(user.digest, pass))) {
+    if (
+      !user ||
+      !(await this.passwordService.verify(user.passwordHash, pass))
+    ) {
       throw new UnauthorizedException('Wrong username or password');
     }
     const payload = { sub: user.userId, username: user.username };
@@ -76,8 +79,8 @@ export class AuthService {
     if (user) {
       throw new ConflictException('Username has been taken');
     }
-    const digest = await this.passwordService.hash(pass);
-    const newUser: UserInfo = { username, email, digest };
+    const passwordHash = await this.passwordService.hash(pass);
+    const newUser: UserInfo = { username, email, passwordHash };
     if (!(await this.usersService.addOne(newUser))) {
       throw new InternalServerErrorException();
     }
