@@ -3,7 +3,6 @@ import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { DbService } from '../db/db.service.js';
 
-// TODO
 export type UserInfo = {
   username: string;
   email: string;

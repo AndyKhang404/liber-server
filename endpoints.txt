@@ -1,9 +1,10 @@
 # healthcheck
-GET /health
+Pub GET /health
 
 # auth
-POST /auth/signup
-POST /auth/login
+Pub POST /auth/signup
+Pub POST /auth/login
+GET /auth/profile
 
 # users
 GET /users/me
@@ -37,3 +38,7 @@ POST /books/:id/share # create sharing link
 DELETE /books/:id/share
 GET /share/:token
 POST /share/:token/accept
+
+# public
+GET /public/books
+GET /public/books/:id

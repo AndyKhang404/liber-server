@@ -4,7 +4,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Request,
+  Req,
   UseGuards,
   Get,
   UsePipes,
@@ -14,6 +14,10 @@ import { AuthGuard } from './auth.guard.js';
 import { ZodValidationPipe } from '../common/zodvalidation.pipe.js';
 import { type SignUpDto, signUpSchema } from './dto/signup.dto.js';
 import { type SignInDto, signInSchema } from './dto/signin.dto.js';
+import { type Request } from 'express';
+import { JWTPayload } from 'jose';
+
+export type UserRequest = Request & { user: JWTPayload };
 
 @Controller('auth')
 export class AuthController {
@@ -39,7 +43,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard)
   @Get('profile')
-  getProfile(@Request() req: any) {
+  getProfile(@Req() req: UserRequest) {
     return req.user;
   }
 }

@@ -1,15 +1,22 @@
-import { Body, Controller, Get, Post, Ip, Req } from '@nestjs/common';
-import type { Request } from 'express';
+import {
+  Controller,
+  Get,
+  Req,
+  UseGuards,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { BooksService } from './books.service.js';
+import { AuthGuard } from '../auth/auth.guard.js';
+import { type UserRequest } from '../auth/auth.controller.js';
 
 @Controller('books')
 export class BooksController {
-  @Get()
-  findAll(@Ip() ip: string): string {
-    return `Request came from ${ip}`;
-  }
+  constructor(private readonly booksService: BooksService) {}
 
-  @Post()
-  addOne(@Req() request: Request): string {
-    return 'What was posted:\n' + JSON.stringify(request.body);
+  @UseGuards(AuthGuard)
+  @Get()
+  getBooks(@Req() req: UserRequest) {
+    if (!req.user.sub) throw new UnauthorizedException();
+    return this.booksService.getBooks(req.user.sub);
   }
 }
