@@ -1,10 +1,8 @@
-# pdf-server
+# liber-server
 
 A backend API for a personal PDF library.
 
-`pdf-server` is being built as a small, self-hosted backend for storing PDF documents, tracking reading progress, adding page bookmarks, and sharing documents with other users.
-
-> **Status:** Work in progress. The PostgreSQL schema has been initialized, and the application/data-access layer is currently being built with Drizzle ORM.
+`liber-server` is being built as a small, self-hosted backend for storing PDF documents, tracking reading progress, adding page bookmarks, and sharing documents with other users.
 
 ## Features
 
@@ -166,13 +164,13 @@ DATABASE_URL=postgresql://user:password@localhost:5432/pdf_server
 After changing the Drizzle schema:
 
 ```bash
-npx drizzle-kit generate --name=change_description
+npm run db:generate
 ```
 
 ### Apply migrations
 
 ```bash
-npx drizzle-kit migrate
+npm run db:migrate
 ```
 
 For a new development database, configure `DATABASE_URL` and apply the generated migrations before starting the application.
@@ -230,22 +228,6 @@ A few design principles guide the project:
 * **Keep business logic out of controllers.** Controllers handle HTTP concerns while services handle application logic and authorization.
 * **Use transactions for multi-step operations.** Operations such as claiming a share should be atomic.
 * **Avoid premature generalization.** A future catalog, permission system, additional media types, or plugin architecture can be introduced when there is a concrete requirement for it.
-
-## Roadmap
-
-The project is intentionally being developed incrementally.
-
-### Current
-
-* [x] PostgreSQL schema
-* [x] Initial Drizzle ORM setup
-* [ ] Database CRUD layer
-* [ ] Authentication
-* [ ] Document/file API
-* [ ] Reading progress API
-* [ ] Bookmark API
-* [ ] Sharing API
-* [ ] Automated tests
 
 ### Future possibilities
 
