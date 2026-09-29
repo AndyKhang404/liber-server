@@ -24,6 +24,7 @@ The project intentionally keeps its initial scope small. Public book discovery, 
 * **NestJS** — HTTP API and application framework
 * **TypeScript** — application language
 * **PostgreSQL** — relational database
+* **MinIO** — S3-compatible object storage for PDF files
 * **Drizzle ORM** — database access and migrations
 * **Argon2** — password hashing
 
@@ -175,6 +176,28 @@ npm run db:migrate
 
 For a new development database, configure `DATABASE_URL` and apply the generated migrations before starting the application.
 
+## Object storage
+
+PDF files are stored in MinIO (S3-compatible). Configure the connection through:
+
+```env
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=your_access_key
+S3_SECRET_KEY=your_secret_key
+S3_BUCKET=liber-books
+S3_REGION=us-east-1
+```
+
+The application auto-creates the bucket on startup if it doesn't exist.
+
+## Docker Compose
+
+A `docker-compose.yml` is provided to run PostgreSQL and MinIO locally:
+
+```bash
+docker compose up -d
+```
+
 ## Project setup
 
 Install dependencies:
@@ -183,7 +206,7 @@ Install dependencies:
 npm install
 ```
 
-Configure the required environment variables, including `DATABASE_URL`, then initialize the database using the Drizzle migration workflow above.
+Configure the required environment variables (`DATABASE_URL`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`), then initialize the database using the Drizzle migration workflow above.
 
 ## Running the application
 
