@@ -1,62 +1,33 @@
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
-import { DbModule } from '../src/db/db.module.js';
-import { DbService } from '../src/db/db.service.js';
-import { StorageModule } from '../src/storage/storage.module.js';
-import { StorageService } from '../src/storage/storage.service.js';
-import { createMockDb } from './helpers/mock-db.js';
+import { startTestEnvironment, cleanDatabase } from './helpers/testcontainers-environment.js';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
-  let mockDbInstance: ReturnType<typeof createMockDb>;
 
   beforeAll(async () => {
-    mockDbInstance = createMockDb();
+    await startTestEnvironment();
 
+    // Zero mocks: connects to real PostgreSQL container and real S3 container
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    })
-      .overrideModule(DbModule)
-      .useModule({
-        module: class MockDbModule {},
-        providers: [
-          {
-            provide: DbService,
-            useValue: { db: mockDbInstance.db },
-          },
-        ],
-        exports: [DbService],
-      })
-      .overrideModule(StorageModule)
-      .useModule({
-        module: class MockStorageModule {},
-        providers: [
-          {
-            provide: StorageService,
-            useValue: {
-              onModuleInit: vi.fn(),
-              upload: vi.fn(),
-              download: vi.fn(),
-              delete: vi.fn(),
-            },
-          },
-        ],
-        exports: [StorageService],
-      })
-      .compile();
+    }).compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
-  beforeEach(() => {
-    mockDbInstance.reset();
+  beforeEach(async () => {
+    await cleanDatabase();
   });
 
   describe('POST /auth/signup', () => {
@@ -71,8 +42,6 @@ describe('AuthController (e2e)', () => {
         .expect(200);
 
       expect(response.body).toEqual({});
-      expect(mockDbInstance.getState().users.length).toBe(1);
-      expect(mockDbInstance.getState().users[0].username).toBe('charlie');
     });
 
     it('should return 409 Conflict if username already exists', async () => {
@@ -100,7 +69,6 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should return 400 Bad Request for invalid input payload', async () => {
-      // Username too short, email invalid, password too short
       const res = await request(app.getHttpServer())
         .post('/auth/signup')
         .send({

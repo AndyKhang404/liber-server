@@ -1,72 +1,25 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
-import { DbModule } from '../src/db/db.module.js';
-import { DbService } from '../src/db/db.service.js';
-import { StorageModule } from '../src/storage/storage.module.js';
-import { StorageService } from '../src/storage/storage.service.js';
-import { createMockDb } from './helpers/mock-db.js';
-import { Readable } from 'stream';
+import { startTestEnvironment, cleanDatabase } from './helpers/testcontainers-environment.js';
 
 describe('BooksController (e2e)', () => {
   let app: INestApplication;
-  let mockDbInstance: ReturnType<typeof createMockDb>;
-  let storageMap: Map<string, { buffer: Buffer; contentType: string }>;
-
   let tokenUserA: string;
   let tokenUserB: string;
 
   beforeAll(async () => {
-    mockDbInstance = createMockDb();
-    storageMap = new Map();
+    await startTestEnvironment();
 
-    const mockStorageService = {
-      onModuleInit: vi.fn(),
-      upload: vi.fn(async (key: string, buffer: Buffer, contentType: string) => {
-        storageMap.set(key, { buffer, contentType });
-      }),
-      download: vi.fn(async (key: string) => {
-        const item = storageMap.get(key);
-        if (!item) {
-          throw new Error('Object not found in storage');
-        }
-        const stream = new Readable();
-        stream.push(item.buffer);
-        stream.push(null);
-        return { stream, contentType: item.contentType };
-      }),
-      delete: vi.fn(async (key: string) => {
-        storageMap.delete(key);
-      }),
-    };
+    // Clean database before starting books test suite
+    await cleanDatabase();
 
+    // Zero mocks: connects to real PostgreSQL and real S3
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    })
-      .overrideModule(DbModule)
-      .useModule({
-        module: class MockDbModule {},
-        providers: [
-          {
-            provide: DbService,
-            useValue: { db: mockDbInstance.db },
-          },
-        ],
-        exports: [DbService],
-      })
-      .overrideModule(StorageModule)
-      .useModule({
-        module: class MockStorageModule {},
-        providers: [
-          {
-            provide: StorageService,
-            useValue: mockStorageService,
-          },
-        ],
-        exports: [StorageService],
-      })
-      .compile();
+    }).compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
@@ -97,7 +50,9 @@ describe('BooksController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   describe('Authentication protection', () => {
@@ -113,7 +68,7 @@ describe('BooksController (e2e)', () => {
 
   describe('Full Books CRUD and Streaming Lifecycle', () => {
     let createdBookId: string;
-    const samplePdfBuffer = Buffer.from('%PDF-1.4 E2E Test Content');
+    const samplePdfBuffer = Buffer.from('%PDF-1.4 E2E Test Content with Real S3 Storage\n');
 
     it('GET /books initially returns empty array for user A', async () => {
       const res = await request(app.getHttpServer())
@@ -209,7 +164,7 @@ describe('BooksController (e2e)', () => {
         .expect(404);
     });
 
-    it('GET /books/:bookId/content streams the PDF content back', async () => {
+    it('GET /books/:bookId/content streams the PDF content back from real S3', async () => {
       const res = await request(app.getHttpServer())
         .get(`/books/${createdBookId}/content`)
         .set('Authorization', `Bearer ${tokenUserA}`)
@@ -219,7 +174,7 @@ describe('BooksController (e2e)', () => {
       expect(Buffer.from(res.body).equals(samplePdfBuffer)).toBe(true);
     });
 
-    it('PATCH /books/:bookId updates book metadata', async () => {
+    it('PATCH /books/:bookId updates book metadata in real PostgreSQL', async () => {
       const res = await request(app.getHttpServer())
         .patch(`/books/${createdBookId}`)
         .set('Authorization', `Bearer ${tokenUserA}`)
@@ -231,7 +186,7 @@ describe('BooksController (e2e)', () => {
 
       expect(res.body.title).toBe('SICP (2nd Edition)');
       expect(res.body.description).toBe('Updated edition description');
-      expect(res.body.author).toBe('Harold Abelson & Gerald Jay Sussman'); // preserved
+      expect(res.body.author).toBe('Harold Abelson & Gerald Jay Sussman');
     });
 
     it('DELETE /books/:bookId removes the book', async () => {
