@@ -5,7 +5,7 @@ export const updateBookSchema = z.object({
   author: z.string().max(256).nullable().optional(),
   publisher: z.string().max(256).nullable().optional(),
   description: z.string().nullable().optional(),
-  published_at: z.string().date().nullable().optional(),
+  published_at: z.iso.date().nullable().optional(),
 });
 
 export type UpdateBookDto = z.infer<typeof updateBookSchema>;

@@ -1,17 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { DbService } from '../db/db.service.js';
 
-export type UserInfo = {
-  username: string;
-  email: string;
-  passwordHash: string;
-};
+import { type UserInfoDto as UserInfo, type UserDto as User } from './dto/user.dto.js';
 
-export type User = UserInfo & {
-  userId: string;
-};
+export type { UserInfo, User };
 
 @Injectable()
 export class UsersService {

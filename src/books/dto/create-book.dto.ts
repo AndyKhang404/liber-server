@@ -5,7 +5,7 @@ export const createBookSchema = z.object({
   author: z.string().max(256).optional(),
   publisher: z.string().max(256).optional(),
   description: z.string().optional(),
-  published_at: z.string().date().optional(),
+  published_at: z.iso.date().optional(),
 });
 
 export type CreateBookDto = z.infer<typeof createBookSchema>;
