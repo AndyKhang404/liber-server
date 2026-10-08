@@ -1,28 +1,20 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module.js';
-import { startTestEnvironment, cleanDatabase } from './helpers/testcontainers-environment.js';
+import { createE2eContext, E2eContext } from './helpers/e2e-context.js';
 
 describe('BooksController (e2e)', () => {
+  let ctx: E2eContext;
   let app: INestApplication;
   let tokenUserA: string;
   let tokenUserB: string;
 
   beforeAll(async () => {
-    await startTestEnvironment();
+    ctx = await createE2eContext();
+    app = ctx.app;
 
     // Clean database before starting books test suite
-    await cleanDatabase();
-
-    // Zero mocks: connects to real PostgreSQL and real S3
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    await ctx.cleanDb();
 
     // Create User A
     await request(app.getHttpServer()).post('/auth/signup').send({
@@ -50,8 +42,8 @@ describe('BooksController (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
+    if (ctx) {
+      await ctx.close();
     }
   });
 
