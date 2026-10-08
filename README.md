@@ -27,6 +27,9 @@ The project intentionally keeps its initial scope small. Public book discovery, 
 * **MinIO** — S3-compatible object storage for PDF files
 * **Drizzle ORM** — database access and migrations
 * **Argon2** — password hashing
+* **Zod** — runtime schema validation and static type inference for DTOs
+* **Vitest** — unit, integration, and E2E test runner
+* **Testcontainers** — automated, ephemeral Docker containers (PostgreSQL & S3) for E2E tests
 
 ## Architecture
 
@@ -150,6 +153,14 @@ Authenticated requests identify the current user through the authentication laye
 
 Business rules such as document ownership and authorization are handled by application services rather than being left to controllers.
 
+### Input validation
+
+Request payloads and parameters are validated at runtime using [Zod](https://zod.dev/) schemas through a custom NestJS `ZodValidationPipe`. Static TypeScript types are inferred directly from schemas (`z.infer<typeof schema>`), providing compile-time type safety alongside runtime validation:
+
+* **Authentication DTOs** (`src/auth/dto/`): `signUpSchema`, `signInSchema`
+* **User DTOs** (`src/users/dto/`): `createUserSchema`, `updateUserSchema`, `userInfoSchema`, `userSchema`, `userResponseSchema`
+* **Book DTOs** (`src/books/dto/`): `createBookSchema`, `updateBookSchema`
+
 ## Database
 
 The project uses PostgreSQL with Drizzle ORM.
@@ -223,17 +234,48 @@ npm run start:prod
 
 ## Testing
 
-### Unit tests
+The project uses [Vitest](https://vitest.dev/) for both unit/integration tests and containerized end-to-end tests.
+
+### Unit & service integration tests
+
+Runs unit tests and service-layer integration tests:
 
 ```bash
 npm run test
 ```
 
-### End-to-end tests
+To run in watch mode:
+
+```bash
+npm run test:watch
+```
+
+### Fast in-memory E2E tests (`e2e:lite`)
+
+Runs all HTTP route E2E tests against an in-memory database and storage mock for rapid local feedback without Docker overhead:
+
+```bash
+npm run test:e2e:lite
+# or
+npm run e2e:lite
+```
+
+### Containerized End-to-end (E2E) tests
+
+E2E tests use **[Testcontainers](https://node.testcontainers.org/)** to spin up isolated, ephemeral PostgreSQL and S3 containers on random available ports:
 
 ```bash
 npm run test:e2e
 ```
+
+When running E2E tests:
+1. Vitest global setup starts a real **PostgreSQL 18** container and a real **S3** container.
+2. Drizzle schema migrations are automatically executed against the PostgreSQL container.
+3. The NestJS application boots with zero mocks, connecting directly to the containerized database and object storage.
+4. HTTP routes (`/auth/*`, `/books/*`, `/`) are tested end-to-end with [Supertest](https://github.com/ladjs/supertest).
+5. All containers are automatically stopped and disposed when the test run completes.
+
+> **Prerequisite:** Docker daemon must be running locally to run E2E tests.
 
 ### Test coverage
 
@@ -249,6 +291,7 @@ A few design principles guide the project:
 * **Separate domain concepts from storage.** A `Document` represents a user's library entry; a `File` represents stored content.
 * **Use the database for invariants.** PostgreSQL constraints should enforce relationships and data integrity where appropriate.
 * **Keep business logic out of controllers.** Controllers handle HTTP concerns while services handle application logic and authorization.
+* **Validate at the boundary with Zod.** HTTP input data (bodies, query parameters, route parameters) is validated and parsed at the controller boundary using Zod schemas, ensuring strongly-typed, sanitized payloads reach services.
 * **Use transactions for multi-step operations.** Operations such as claiming a share should be atomic.
 * **Avoid premature generalization.** A future catalog, permission system, additional media types, or plugin architecture can be introduced when there is a concrete requirement for it.
 
