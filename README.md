@@ -1,5 +1,11 @@
 # liber-server
 
+[![CI](https://github.com/AndyKhang404/liber-server/actions/workflows/ci.yml/badge.svg)](https://github.com/AndyKhang404/liber-server/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D24-brightgreen?logo=node.js)](https://nodejs.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-12-ea2849?logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![Vitest](https://img.shields.io/badge/tested%20with-vitest-yellow?logo=vitest&logoColor=white)](https://vitest.dev/)
+
 A backend API for a personal PDF library.
 
 `liber-server` is being built as a small, self-hosted backend for storing PDF documents, tracking reading progress, adding page bookmarks, and sharing documents with other users.
@@ -279,9 +285,21 @@ When running E2E tests:
 
 ### Test coverage
 
+Runs the complete test suite (unit tests, service integration tests, and in-memory E2E tests) and generates coverage reports:
+
 ```bash
 npm run test:cov
 ```
+
+Coverage is collected using Vitest's V8 provider across all application code in `src/`, while excluding test fixtures and bootstrap code.
+
+### Continuous Integration (CI)
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main` and on all pull requests, executing three parallel jobs:
+
+1. **Lint & build**: Verifies code quality with [Oxlint](https://oxc.rs/) and ensures clean compilation.
+2. **Tests & coverage**: Runs `npm run test:cov` and uploads coverage reports as artifacts.
+3. **E2E (Testcontainers)**: Boots PostgreSQL 18 and MinIO S3 containers to run full containerized integration tests.
 
 ## Development principles
 
