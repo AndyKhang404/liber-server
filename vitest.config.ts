@@ -8,6 +8,20 @@ export default defineConfig({
   test: {
     globals: true,
     root: './',
-    include: ['**/*.spec.ts'],
+    include: ['**/*.spec.ts', 'test/*.e2e-spec.ts'],
+    fileParallelism: false,
+    env: {
+      E2E_MODE: 'lite',
+    },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'clover'],
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/**/*.spec.ts',
+        'src/main.ts',
+        'test/**',
+      ],
+    },
   },
 });
