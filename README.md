@@ -1,10 +1,10 @@
 # liber-server
 
 [![CI](https://github.com/AndyKhang404/liber-server/actions/workflows/ci.yml/badge.svg)](https://github.com/AndyKhang404/liber-server/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/AndyKhang404/liber-server/branch/main/graph/badge.svg)](https://codecov.io/gh/AndyKhang404/liber-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D24-brightgreen?logo=node.js)](https://nodejs.org/)
 [![NestJS](https://img.shields.io/badge/NestJS-12-ea2849?logo=nestjs&logoColor=white)](https://nestjs.com/)
-[![Vitest](https://img.shields.io/badge/tested%20with-vitest-yellow?logo=vitest&logoColor=white)](https://vitest.dev/)
 
 A backend API for a personal PDF library.
 
