@@ -4,6 +4,8 @@ import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { sql } from 'drizzle-orm';
+import { existsSync, readdirSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 
 let postgresContainer: StartedPostgreSqlContainer | null = null;
 let s3Container: StartedTestContainer | null = null;
@@ -55,7 +57,20 @@ export async function startTestEnvironment(): Promise<TestEnvironment> {
   // 4. Run Drizzle schema migrations on PostgreSQL
   pool = new pg.Pool({ connectionString: databaseUrl });
   db = drizzle({ client: pool });
-  await migrate(db, { migrationsFolder: './drizzle' });
+
+  const hasMigrations =
+    existsSync('./drizzle') &&
+    readdirSync('./drizzle').some((f) => !f.startsWith('.'));
+
+  if (hasMigrations) {
+    await migrate(db, { migrationsFolder: './drizzle' });
+  } else {
+    // In a fresh environment with no migrations folder yet, push schema directly
+    execSync('npx drizzle-kit push --force', {
+      stdio: 'pipe',
+      env: { ...process.env, DATABASE_URL: databaseUrl },
+    });
+  }
 
   return {
     postgresContainer,
